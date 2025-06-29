@@ -26,7 +26,7 @@ def demo_data() -> List[Person]:
 
     return [person1, person2, person3]
 
-def db_data() -> list[Person]:
+def db_data() -> List[Person]:
     if not db_host:
         return demo_data()
     
