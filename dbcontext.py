@@ -3,6 +3,8 @@ import mysql.connector
 from os import environ
 from person import Person
 from flask import Response
+from typing import List
+
 
 db_user = environ.get('DB_USER')
 db_pass = environ.get('DB_PASS')
