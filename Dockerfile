@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.9-alpine
 
 # התקנת תלויות מערכת עבור mysqlclient
 RUN apt-get update && apt-get install -y \
