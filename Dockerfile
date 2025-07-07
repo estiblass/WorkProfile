@@ -1,20 +1,22 @@
-FROM python:3.9-slim
-
-# התקנת תלויות מערכת עבור mysqlclient
-RUN apt-get update && apt-get install -y \
-    gcc \
-    default-libmysqlclient-dev \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.9-alpine
 
 WORKDIR /app
 
-COPY app.py dbcontext.py person.py requirements.txt ./
-COPY templates/ templates/
-COPY static/ static/
+# התקנת כלים ותלויות לבניית mysqlclient
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
+    mariadb-connector-c-dev \
+    libffi-dev \
+    && pip install --no-cache-dir --upgrade pip
 
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 5000
+COPY static/ static/
+COPY templates/ templates/
+COPY app.py dbcontext.py person.py ./
 
-CMD ["python", "app.py"]
+EXPOSE 8080
+ENTRYPOINT ["python", "app.py"]
+
