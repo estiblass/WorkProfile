@@ -1,0 +1,35 @@
+name: WorkProfile CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: docker build -t workprofile .
+
+      - name: Run container
+        run: |
+          docker run -d -p 8080:5000 --name wp workprofile
+          sleep 10
+
+      - name: Test root endpoint
+        run: curl -f http://localhost:8080/
+
+      - name: Test health endpoint
+        run: curl -f http://localhost:8080/health
+
+      - name: Cleanup
+        run: |
+          docker stop wp
+          docker rm wp
+
