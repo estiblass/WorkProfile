@@ -37,3 +37,19 @@ jobs:
     - name: Push to DockerHub
       run: docker push ${{ secrets.DOCKER_USERNAME }}/workprofile:latest
 
+  e2e-test:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Pull from DockerHub
+      run: docker pull ${{ secrets.DOCKER_USERNAME }}/workprofile:latest
+
+    - name: Run container from DockerHub
+      run: |
+        docker run -d -p 8080:80 --name e2econtainer ${{ secrets.DOCKER_USERNAME }}/workprofile:latest
+        sleep 10
+        curl --fail http://localhost:8080/health
+        echo "✅ E2E Test passed!"
+        docker stop e2econtainer
+        docker rm e2econtainer
