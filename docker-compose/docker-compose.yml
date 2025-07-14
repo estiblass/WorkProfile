@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: exampleDb
+      MYSQL_USER: flaskapp
+      MYSQL_PASSWORD: flaskapp
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - backend
+
+  workprofile:
+    build: ..
+    container_name: workprofile
+    environment:
+      DB_HOST: mysql
+      DB_USER: flaskapp
+      DB_PASS: flaskapp
+      DB_NAME: exampleDb
+    depends_on:
+      - mysql
+    networks:
+      - backend
+      - frontend
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - workprofile
+    networks:
+      - frontend
+
+volumes:
+  mysql-data:
+
+networks:
+  frontend:
+  backend:
+
