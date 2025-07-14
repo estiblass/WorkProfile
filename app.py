@@ -1,9 +1,9 @@
-#from cgitb import handler
 from flask import Flask, render_template, request, Response
 from os import environ
 from dbcontext import db_data, db_delete, db_add, health_check
 from person import Person
 import logging
+import time
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
@@ -11,12 +11,31 @@ handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 app.logger.addHandler(handler)
 
-host_name = environ.get("HOSTNAME")
-if not health_check():
-    host_name = "no_host"
-db_host = environ.get('DB_HOST')
-backend = environ.get('BACKEND') or "http://localhost"
+# ---------------------------------------------------------------------------
+# 🔄 Wait for the database to become available (retry up to 10×, 5 s each)
+# ---------------------------------------------------------------------------
+for attempt in range(10):
+    try:
+        if health_check():
+            app.logger.info("✓ Database is ready on attempt %s", attempt + 1)
+            break
+    except Exception as exc:
+        app.logger.warning("⏳ Waiting for database (%s/10): %s", attempt + 1, exc)
+        time.sleep(5)
+else:
+    app.logger.error("❌ Database is not available after 10 attempts – exiting.")
+    exit(1)
 
+# ---------------------------------------------------------------------------
+# Environment variables
+# ---------------------------------------------------------------------------
+host_name = environ.get("HOSTNAME") or "no_host"
+db_host = environ.get("DB_HOST", "mysql")
+backend = environ.get("BACKEND", "http://localhost")
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
 @app.route("/")
 def main():
     app.logger.info("Entering main route")
@@ -40,17 +59,24 @@ def add():
 
 @app.route("/health")
 def health():
-    health_messages = []
-    # Simple application health check
+    messages = []
+    # Application health
+    messages.append("Application: Healthy")
+
+    # Database health
     try:
-        app.logger.info("Application is running")
-        health_messages.append("Application: Healthy")
-        return "\n".join(health_messages), 200
-    except Exception as e:
-        app.logger.error(f"Application health check failed: {e}")
-        health_messages.append("Application: Not Healthy")
-        return "\n".join(health_messages), 503
+        db_ok = health_check()
+        messages.append("Database: Healthy" if db_ok else "Database: Not Healthy")
+        status_code = 200 if db_ok else 503
+    except Exception as exc:
+        app.logger.error("Database health check failed: %s", exc)
+        messages.append("Database: Not Healthy")
+        status_code = 503
 
+    return "\n".join(messages), status_code
 
+# ---------------------------------------------------------------------------
+# Entrypoint
+# ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host="0.0.0.0", port=int(environ.get("PORT", 5000)))
