@@ -101,8 +101,9 @@ jobs:
           docker push esti563/workprofile:${{ env.IMAGE_TAG }}
           docker push esti563/workprofile:latest
 
-  # Stage 5: Kubernetes Deployment Testing
+  # Stage 5: Kubernetes Deployment Testing (מושבת ב-GitHub Actions)
   kubernetes-test:
+    if: false  # השלב הזה לא ירוץ אוטומטית
     needs: publish
     runs-on: ubuntu-latest
     env:
@@ -144,7 +145,7 @@ jobs:
 
   # Stage 6: Manual Deployment Instructions
   manual-deploy-instructions:
-    needs: kubernetes-test
+    needs: publish
     runs-on: ubuntu-latest
     steps:
       - name: Display manual deployment instructions
