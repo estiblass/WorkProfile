@@ -2,101 +2,132 @@ name: WorkProfile CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
-  basic-validation:
+  stage1-basic-validation:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Basic Validation - Python Imports and Files
-      run: |
-        python3 -c "import flask; print('✓ Flask import successful')"
-        python3 -c "import mysql.connector; print('✓ MySQL connector import successful')"
-        test -f Dockerfile && echo "✓ Dockerfile exists"
-        test -f requirements.txt && echo "✓ requirements.txt exists"
-        test -f src/app.py && echo "✓ app.py exists"
+      - uses: actions/checkout@v3
 
-  build-and-test:
-    runs-on: ubuntu-latest
-    needs: basic-validation
-    steps:
-    - uses: actions/checkout@v3
-    - name: Build Docker Image
-      run: |
-        docker build -t yourdockerhubusername/workprofile:latest .
-    - name: Run Single Container Tests
-      run: |
-        docker run -d -p 5000:5000 --name test-app yourdockerhubusername/workprofile:latest
-        sleep 15
-        curl -f http://localhost:5000/ && echo "✓ Main endpoint works"
-        curl -f http://localhost:5000/health && echo "✓ Health endpoint works"
-        docker stop test-app && docker rm test-app
+      - name: Validate Python dependencies
+        run: |
+          python3 -c "import flask; print('✓ Flask import successful')"
+          python3 -c "import mysql.connector; print('✓ MySQL connector import successful')"
 
-  docker-compose-test:
-    runs-on: ubuntu-latest
-    needs: build-and-test
-    services:
-      docker:
-        image: docker:20.10.16-dind
-        options: --privileged
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Docker Compose
-      run: |
-        cd docker-compose
-        docker-compose up -d
-        sleep 90
-        curl -f http://localhost:8080/ && echo "✓ Nginx proxy works"
-        curl -f http://localhost:8080/health && echo "✓ Health through nginx works"
-        curl -s http://localhost:8080/health | grep "Database: Healthy" && echo "✓ Database connectivity works"
-        docker-compose down -v
+      - name: Check required files exist
+        run: |
+          test -f Dockerfile && echo "✓ Dockerfile exists"
+          test -f requirements.txt && echo "✓ requirements.txt exists"
+          test -f src/app.py && echo "✓ app.py exists"
 
-  publish:
+  stage2-build-and-test:
     runs-on: ubuntu-latest
-    needs: docker-compose-test
+    needs: stage1-basic-validation
     steps:
-    - uses: actions/checkout@v3
-    - name: Log in to DockerHub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-    - name: Push Docker Image
-      run: |
-        docker tag yourdockerhubusername/workprofile:latest yourdockerhubusername/workprofile:$(date +%Y%m%d%H%M%S)
-        docker push yourdockerhubusername/workprofile:latest
-        docker push yourdockerhubusername/workprofile:$(date +%Y%m%d%H%M%S)
+      - uses: actions/checkout@v3
 
-  kubernetes-deploy-test:
+      - name: Build Docker image
+        run: |
+          docker build -t workprofile-app:${{ github.sha }} .
+
+      - name: Run single container tests
+        run: |
+          docker run -d -p 5000:5000 --name test-app workprofile-app:${{ github.sha }}
+          sleep 15
+          curl -f http://localhost:5000/ && echo "✓ Main endpoint works"
+          curl -f http://localhost:5000/health && echo "✓ Health endpoint works"
+          docker stop test-app && docker rm test-app
+
+      - name: Tag images
+        run: |
+          docker tag workprofile-app:${{ github.sha }} workprofile-app:latest
+
+  stage3-3tier-stack-tests:
     runs-on: ubuntu-latest
-    needs: publish
+    needs: stage2-build-and-test
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'latest'
-    - name: Deploy MySQL to Kubernetes
-      run: |
-        kubectl apply -f k8s/mysql-secret.yaml
-        kubectl apply -f k8s/mysql-statefulset.yaml
-        kubectl apply -f k8s/mysql-service.yaml
-        kubectl wait --for=condition=ready pod/mysql-0 --timeout=600s
-    - name: Deploy WorkProfile to Kubernetes
-      run: |
-        kubectl apply -f k8s/workprofile-configmap.yaml
-        kubectl apply -f k8s/workprofile-deployment.yaml
-        kubectl apply -f k8s/workprofile-service.yaml
-        kubectl wait --for=condition=available deployment/workprofile --timeout=600s
-    - name: Test WorkProfile in Kubernetes
-      run: |
-        kubectl port-forward deployment/workprofile 5000:5000 &
-        FORWARD_PID=$!
-        sleep 20
-        curl -f http://localhost:5000/ && echo "✓ Kubernetes app works"
-        curl -f http://localhost:5000/health && echo "✓ Kubernetes health works"
-        curl -s http://localhost:5000/health | grep "Database: Healthy" && echo "✓ Kubernetes database works"
-        kill $FORWARD_PID
+      - uses: actions/checkout@v3
+
+      - name: Start 3-tier stack with docker-compose
+        working-directory: docker-compose
+        run: docker-compose up -d
+
+      - name: Wait for services
+        run: sleep 90
+
+      - name: Test nginx proxy main endpoint
+        run: curl -f http://localhost:8080/ && echo "✓ Nginx proxy works"
+
+      - name: Test nginx health endpoint
+        run: curl -f http://localhost:8080/health && echo "✓ Health through nginx works"
+
+      - name: Test database connectivity
+        run: |
+          curl -s http://localhost:8080/health | grep "Database: Healthy" && echo "✓ Database connectivity works"
+
+      - name: Cleanup docker-compose
+        working-directory: docker-compose
+        run: docker-compose down -v
+
+  stage4-publish:
+    runs-on: ubuntu-latest
+    needs: stage3-3tier-stack-tests
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/workprofile-app:${{ github.sha }} .
+          docker push ${{ secrets.DOCKER_USERNAME }}/workprofile-app:${{ github.sha }}
+          docker tag ${{ secrets.DOCKER_USERNAME }}/workprofile-app:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/workprofile-app:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/workprofile-app:latest
+
+  stage5-k8s-deployment-tests:
+    runs-on: ubuntu-latest
+    needs: stage4-publish
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up kind cluster
+        uses: engineerd/setup-kind@v0.5.0
+
+      - name: Apply MySQL manifests
+        run: |
+          kubectl apply -f k8s/mysql-secret.yaml
+          kubectl apply -f k8s/mysql-statefulset.yaml
+          kubectl apply -f k8s/mysql-service.yaml
+          kubectl wait --for=condition=ready pod/mysql-0 --timeout=600s
+
+      - name: Apply WorkProfile manifests
+        run: |
+          kubectl apply -f k8s/workprofile-configmap.yaml
+          kubectl apply -f k8s/workprofile-deployment.yaml
+          kubectl apply -f k8s/workprofile-service.yaml
+          kubectl wait --for=condition=available deployment/workprofile --timeout=600s
+
+      - name: Port forward and test app
+        run: |
+          kubectl port-forward deployment/workprofile 5000:5000 &
+          FORWARD_PID=$!
+          sleep 20
+          curl -f http://localhost:5000/ && echo "✓ Kubernetes app works"
+          curl -f http://localhost:5000/health && echo "✓ Kubernetes health works"
+          curl -s http://localhost:5000/health | grep "Database: Healthy" && echo "✓ Kubernetes database works"
+          kill $FORWARD_PID
+
+  stage6-manual-deploy:
+    runs-on: ubuntu-latest
+    needs: stage5-k8s-deployment-tests
+    steps:
+      - name: Show manual deploy instructions
+        run: |
+          echo "Manual deployment instructions for Killercoda environment are in the README.md"
