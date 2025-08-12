@@ -49,11 +49,11 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }} .
-          docker tag esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }} your-dockerhub-username/workprofile:latest
+          docker tag esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }} esti563/workprofile:latest
 
       - name: Run single container tests
         run: |
-          docker run -d -p 5000:5000 --name test-app your-dockerhub-username/workprofile:${{ needs.basic-validation.outputs.image-tag }}
+          docker run -d -p 5000:5000 --name test-app esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }}
           sleep 15
           curl -f http://localhost:5000/ && echo "✓ Main endpoint works"
           curl -f http://localhost:5000/health && echo "✓ Health endpoint works"
@@ -63,18 +63,15 @@ jobs:
   docker-compose-test:
     needs: build-and-test
     runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:20.10.16-dind
-        privileged: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Compose
+      - name: Install Docker Compose
         run: |
-          apk add --no-cache py3-pip
-          pip3 install docker-compose
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
 
       - name: Run 3-tier Docker Compose stack
         run: |
@@ -102,8 +99,8 @@ jobs:
 
       - name: Build and push Docker images
         run: |
-          docker build -t your-dockerhub-username/workprofile:${{ needs.basic-validation.outputs.image-tag }} .
-          docker tag esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }} your-dockerhub-username/workprofile:latest
+          docker build -t esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }} .
+          docker tag esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }} esti563/workprofile:latest
           docker push esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }}
           docker push esti563/workprofile:latest
 
@@ -120,7 +117,7 @@ jobs:
 
       - name: Load Docker image into kind
         run: |
-          kind load docker-image your-dockerhub-username/workprofile:${{ needs.basic-validation.outputs.image-tag }}
+          kind load docker-image esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }}
 
       - name: Deploy MySQL manifests
         run: |
