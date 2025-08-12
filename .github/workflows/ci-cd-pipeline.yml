@@ -48,8 +48,8 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t your-dockerhub-username/workprofile:${{ needs.basic-validation.outputs.image-tag }} .
-          docker tag your-dockerhub-username/workprofile:${{ needs.basic-validation.outputs.image-tag }} your-dockerhub-username/workprofile:latest
+          docker build -t esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }} .
+          docker tag esti563/workprofile:${{ needs.basic-validation.outputs.image-tag }} your-dockerhub-username/workprofile:latest
 
       - name: Run single container tests
         run: |
