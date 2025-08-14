@@ -1,24 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mysql-headless
+  name: workprofile
 spec:
-  clusterIP: None
+  type: NodePort
   selector:
-    app: mysql
+    app: workprofile
   ports:
-    - port: 3306
-      targetPort: 3306
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql-service
-spec:
-  selector:
-    app: mysql
-  ports:
-    - port: 3306
-      targetPort: 3306
-  type: ClusterIP
+    - port: 5000        # הפורט שבו ניגשים לשירות
+      targetPort: 5000  # הפורט שבו האפליקציה מאזינה בפוד
+      nodePort: 30080   # הפורט שייפתח מבחוץ על ה-Node
