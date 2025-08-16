@@ -101,7 +101,7 @@ jobs:
           docker push esti563/workprofile:${{ env.IMAGE_TAG }}
           docker push esti563/workprofile:latest
 
-  # Stage 5: Kubernetes Deployment Testing (פעיל עם pull מה-Docker Hub)
+  # Stage 5: Kubernetes Deployment Testing
   kubernetes-test:
     needs: publish
     runs-on: ubuntu-latest
@@ -128,7 +128,16 @@ jobs:
           kubectl apply -f k8s/mysql-secret.yaml
           kubectl apply -f k8s/mysql-statefulset.yaml
           kubectl apply -f k8s/mysql-service.yaml
-          kubectl wait --for=condition=ready pod/mysql-0 --timeout=600s
+
+      - name: Debug MySQL Pod before waiting
+        run: |
+          kubectl get pods
+          kubectl describe pod/mysql-0 || true
+          kubectl logs pod/mysql-0 --all-containers || true
+
+      - name: Wait for MySQL StatefulSet ready
+        run: |
+          kubectl wait --for=condition=ready pod -l app=mysql --timeout=600s
 
       - name: Deploy WorkProfile manifests
         run: |
