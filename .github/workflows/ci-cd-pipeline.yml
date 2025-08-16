@@ -101,9 +101,8 @@ jobs:
           docker push esti563/workprofile:${{ env.IMAGE_TAG }}
           docker push esti563/workprofile:latest
 
-  # Stage 5: Kubernetes Deployment Testing (מושבת ב-GitHub Actions)
+  # Stage 5: Kubernetes Deployment Testing
   kubernetes-test:
-    if: false  # השלב הזה לא ירוץ אוטומטית
     needs: publish
     runs-on: ubuntu-latest
     env:
@@ -132,6 +131,11 @@ jobs:
           kubectl apply -f k8s/workprofile-deployment.yaml
           kubectl apply -f k8s/workprofile-service.yaml
           kubectl wait --for=condition=available deployment/workprofile --timeout=600s
+
+      - name: Wait for all pods to be ready
+        run: |
+          echo "Waiting for all pods to be Ready..."
+          kubectl wait --for=condition=Ready pods --all --timeout=600s
 
       - name: Test WorkProfile app in Kubernetes
         run: |
