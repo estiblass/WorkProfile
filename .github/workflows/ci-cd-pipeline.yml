@@ -123,7 +123,7 @@ jobs:
           docker pull esti563/workprofile:${{ env.IMAGE_TAG }}
           kind load docker-image esti563/workprofile:${{ env.IMAGE_TAG }}
 
-      # יצירת StorageClass פשוט ל-kind
+      # StorageClass פשוט
       - name: Create simple StorageClass for kind
         run: |
           kubectl apply -f - <<EOF
@@ -135,26 +135,40 @@ provisioner: kubernetes.io/no-provisioner
 volumeBindingMode: WaitForFirstConsumer
 EOF
 
+      # בדיקה של Secret
+      - name: Check MySQL secret
+        run: |
+          kubectl get secret mysql-secret -o yaml
+          if ! kubectl get secret mysql-secret -o jsonpath='{.data.mysql-root-password}' | grep .; then
+            echo "ERROR: mysql-secret is missing mysql-root-password"
+            exit 1
+          fi
+
       - name: Deploy MySQL manifests
         run: |
           kubectl apply -f k8s/mysql-secret.yaml
           kubectl apply -f k8s/mysql-statefulset.yaml
           kubectl apply -f k8s/mysql-service.yaml
 
-      # Debug לפני ההמתנה
-      - name: Debug MySQL pod before waiting
+      # Debug לפני wait
+      - name: Debug MySQL pod
         run: |
-          echo "==== Pod status ===="
+          echo "==== Pods ===="
           kubectl get pods -o wide
           echo "==== PVCs ===="
           kubectl get pvc
-          echo "==== Pod describe ===="
+          echo "==== Describe pod ===="
           kubectl describe pod mysql-0 || true
           echo "==== Pod logs ===="
           kubectl logs mysql-0 || true
 
+      # Retry wait עד 3 פעמים
       - name: Wait for MySQL pod ready
-        run: kubectl wait --for=condition=ready pod/mysql-0 --timeout=900s
+        run: |
+          for i in 1 2 3; do
+            kubectl wait --for=condition=ready pod/mysql-0 --timeout=300s && break || echo "Retrying wait $i..."
+            sleep 10
+          done
 
       - name: Deploy WorkProfile manifests
         run: |
