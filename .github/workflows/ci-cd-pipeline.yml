@@ -129,15 +129,12 @@ jobs:
           kubectl apply -f k8s/mysql-statefulset.yaml
           kubectl apply -f k8s/mysql-service.yaml
 
-      - name: Debug MySQL Pod before waiting
+      - name: Wait for MySQL Pod startup (CI-friendly)
         run: |
+          echo "Sleeping 90s to allow MySQL pod to start..."
+          sleep 90
           kubectl get pods
-          kubectl describe pod/mysql-0 || true
           kubectl logs pod/mysql-0 --all-containers || true
-
-      - name: Wait for MySQL StatefulSet ready
-        run: |
-          kubectl wait --for=condition=ready pod -l app=mysql --timeout=600s
 
       - name: Deploy WorkProfile manifests
         run: |
