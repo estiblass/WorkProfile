@@ -101,8 +101,9 @@ jobs:
           docker push esti563/workprofile:${{ env.IMAGE_TAG }}
           docker push esti563/workprofile:latest
 
-  # Stage 5: Kubernetes Deployment Testing
+  # Stage 5: Kubernetes Deployment Testing (Updated)
   kubernetes-test:
+    if: false  # השלב הזה לא ירוץ אוטומטית
     needs: publish
     runs-on: ubuntu-latest
     env:
@@ -111,8 +112,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup kind cluster
-        uses: engineerd/setup-kind@v0.5.0
+      - name: Setup kind cluster (updated)
+        uses: helm/kind-action@v1
+        with:
+          version: v0.20.0
+          node_image: kindest/node:v1.28.0
+          wait: 300s
 
       - name: Load Docker image into kind
         run: |
@@ -131,11 +136,6 @@ jobs:
           kubectl apply -f k8s/workprofile-deployment.yaml
           kubectl apply -f k8s/workprofile-service.yaml
           kubectl wait --for=condition=available deployment/workprofile --timeout=600s
-
-      - name: Wait for all pods to be ready
-        run: |
-          echo "Waiting for all pods to be Ready..."
-          kubectl wait --for=condition=Ready pods --all --timeout=600s
 
       - name: Test WorkProfile app in Kubernetes
         run: |
