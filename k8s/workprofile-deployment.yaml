@@ -32,12 +32,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: mysql-secret
-                  key: MYSQL_USER
-            - name: DB_PASS
+                  key: MYSQL_USER       # ← נמשך מה־Secret
+            - name: DB_PASSWORD          # ← אחיד עם הקוד
               valueFrom:
                 secretKeyRef:
                   name: mysql-secret
-                  key: MYSQL_PASSWORD
+                  key: MYSQL_PASSWORD    # ← נמשך מה־Secret
           readinessProbe:
             httpGet:
               path: /health
