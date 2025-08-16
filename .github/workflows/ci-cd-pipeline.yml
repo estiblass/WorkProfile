@@ -123,7 +123,7 @@ jobs:
           docker pull esti563/workprofile:${{ env.IMAGE_TAG }}
           kind load docker-image esti563/workprofile:${{ env.IMAGE_TAG }}
 
-      # יצירת StorageClass פשוט כדי שה-PVC יתחבר
+      # יצירת StorageClass פשוט ל-kind
       - name: Create simple StorageClass for kind
         run: |
           kubectl apply -f - <<EOF
