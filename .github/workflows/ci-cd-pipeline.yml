@@ -123,45 +123,38 @@ jobs:
           docker pull esti563/workprofile:${{ env.IMAGE_TAG }}
           kind load docker-image esti563/workprofile:${{ env.IMAGE_TAG }}
 
-      # Deploy MySQL with emptyDir volume to avoid PVC issues
-      - name: Deploy MySQL with emptyDir
+      # יצירת StorageClass פשוט כדי שה-PVC יתחבר
+      - name: Create simple StorageClass for kind
         run: |
-          cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Pod
+          kubectl apply -f - <<EOF
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
 metadata:
-  name: mysql-0
-spec:
-  containers:
-  - name: mysql
-    image: mysql:8.0
-    env:
-    - name: MYSQL_ROOT_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: mysql-secret
-          key: mysql-root-password
-    ports:
-    - containerPort: 3306
-    volumeMounts:
-    - name: mysql-data
-      mountPath: /var/lib/mysql
-  volumes:
-  - name: mysql-data
-    emptyDir: {}
+  name: standard
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
 EOF
 
+      - name: Deploy MySQL manifests
+        run: |
+          kubectl apply -f k8s/mysql-secret.yaml
+          kubectl apply -f k8s/mysql-statefulset.yaml
+          kubectl apply -f k8s/mysql-service.yaml
+
+      # Debug לפני ההמתנה
       - name: Debug MySQL pod before waiting
         run: |
           echo "==== Pod status ===="
           kubectl get pods -o wide
+          echo "==== PVCs ===="
+          kubectl get pvc
           echo "==== Pod describe ===="
           kubectl describe pod mysql-0 || true
           echo "==== Pod logs ===="
           kubectl logs mysql-0 || true
 
       - name: Wait for MySQL pod ready
-        run: kubectl wait --for=condition=ready pod/mysql-0 --timeout=600s
+        run: kubectl wait --for=condition=ready pod/mysql-0 --timeout=900s
 
       - name: Deploy WorkProfile manifests
         run: |
