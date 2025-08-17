@@ -12,6 +12,17 @@ spec:
       labels:
         app: workprofile
     spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for MySQL..."
+              until nc -z mysql-service 3306; do
+                sleep 10
+              done
       containers:
         - name: workprofile
           image: esti563/workprofile:latest
@@ -33,13 +44,11 @@ spec:
                 secretKeyRef:
                   name: mysql-secret
                   key: MYSQL_USER
-            - name: DB_PASSWORD     # ← שם אחיד וברור
+            - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: mysql-secret
                   key: MYSQL_PASSWORD
-          # זמנית בלי probes כדי לא לתקוע את ה־pod
-          # (תחזירי אחרי שתבדקי שיש לך endpoint /health שעובד)
           resources:
             limits:
               memory: "512Mi"
@@ -47,14 +56,3 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "150m"
-      initContainers:
-        - name: wait-for-mysql
-          image: busybox
-          command:
-            - sh
-            - -c
-            - |
-              until nc -z mysql 3306; do    # ← שם service של MySQL
-                echo "Waiting for MySQL..."
-                sleep 5
-              done
