@@ -10,14 +10,21 @@ jobs:
   basic-validation:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - run: |
+
+      - name: Install Python dependencies
+        run: |
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt
-      - run: |
+
+      - name: Basic validation tests
+        run: |
           python3 -c "import flask; print('✓ Flask import successful')"
           python3 -c "import mysql.connector; print('✓ MySQL connector import successful')"
           test -f Dockerfile && echo "✓ Dockerfile exists"
@@ -31,11 +38,16 @@ jobs:
     env:
       IMAGE_TAG: 1.0.${{ github.run_number }}
     steps:
-      - uses: actions/checkout@v3
-      - run: |
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: |
           docker build -t esti563/workprofile:${{ env.IMAGE_TAG }} .
           docker tag esti563/workprofile:${{ env.IMAGE_TAG }} esti563/workprofile:latest
-      - run: |
+
+      - name: Run single container tests
+        run: |
           docker run -d -p 5000:5000 --name test-app esti563/workprofile:${{ env.IMAGE_TAG }}
           sleep 15
           curl -f http://localhost:5000/ && echo "✓ Main endpoint works"
@@ -47,12 +59,17 @@ jobs:
     needs: build-and-test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - run: |
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Docker Compose
+        run: |
           sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
-      - run: |
+
+      - name: Run 3-tier Docker Compose stack
+        run: |
           cd docker-compose
           docker-compose up -d
           sleep 90
@@ -68,12 +85,17 @@ jobs:
     env:
       IMAGE_TAG: 1.0.${{ github.run_number }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: docker/login-action@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - run: |
+
+      - name: Build and push Docker images
+        run: |
           docker build -t esti563/workprofile:${{ env.IMAGE_TAG }} .
           docker tag esti563/workprofile:${{ env.IMAGE_TAG }} esti563/workprofile:latest
           docker push esti563/workprofile:${{ env.IMAGE_TAG }}
@@ -86,30 +108,46 @@ jobs:
     env:
       IMAGE_TAG: 1.0.${{ github.run_number }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: helm/kind-action@v1.8.0
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup kind cluster
+        uses: helm/kind-action@v1.8.0
         with:
           version: v0.20.0
           cluster_name: kind
           wait: 300s
-      - run: |
+
+      - name: Pull image from Docker Hub and load into kind
+        run: |
           docker pull esti563/workprofile:${{ env.IMAGE_TAG }}
           kind load docker-image esti563/workprofile:${{ env.IMAGE_TAG }}
-      - run: |
+
+      - name: Deploy MySQL manifests
+        run: |
           kubectl apply -f k8s/mysql-secret.yaml
           kubectl apply -f k8s/mysql-statefulset.yaml
           kubectl apply -f k8s/mysql-service.yaml
-      - run: |
-          echo "Sleeping 120s to allow MySQL pod to start..."
-          sleep 120
-          kubectl get pods
-          kubectl logs pod/mysql-0 --all-containers || true
-      - run: |
+
+      - name: Wait for MySQL Pod to be Ready
+        run: |
+          echo "Waiting for MySQL pod to be ready..."
+          until kubectl get pod mysql-0 -o jsonpath='{.status.containerStatuses[0].ready}' | grep true; do
+            echo "MySQL not ready yet..."
+            sleep 5
+          done
+          echo "MySQL is ready!"
+          kubectl logs mysql-0
+
+      - name: Deploy WorkProfile manifests
+        run: |
           kubectl apply -f k8s/workprofile-configmap.yaml
           kubectl apply -f k8s/workprofile-deployment.yaml
           kubectl apply -f k8s/workprofile-service.yaml
-          kubectl wait --for=condition=available deployment/workprofile --timeout=600s
-      - run: |
+          kubectl rollout status deployment/workprofile --timeout=600s
+
+      - name: Test WorkProfile app in Kubernetes
+        run: |
           kubectl port-forward deployment/workprofile 5000:5000 &
           FORWARD_PID=$!
           sleep 20
@@ -123,13 +161,19 @@ jobs:
     needs: publish
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          echo "Deploy the manifests to Killercoda with:"
+      - name: Display manual deployment instructions
+        run: |
+          echo "Deploy the manifests to your Killercoda environment with:"
           echo "kubectl apply -f k8s/mysql-secret.yaml"
           echo "kubectl apply -f k8s/mysql-statefulset.yaml"
           echo "kubectl apply -f k8s/mysql-service.yaml"
           echo "kubectl apply -f k8s/workprofile-configmap.yaml"
           echo "kubectl apply -f k8s/workprofile-deployment.yaml"
           echo "kubectl apply -f k8s/workprofile-service.yaml"
-          echo "Verify pods with: kubectl get pods, kubectl get statefulset, kubectl get pvc"
-          echo "Use port-forward or NodePort to access the app."
+          echo ""
+          echo "Wait for pods to be ready and verify deployment with:"
+          echo "kubectl get pods"
+          echo "kubectl get statefulset"
+          echo "kubectl get pvc"
+          echo ""
+          echo "Use kubectl port-forward or NodePort to access the application."
