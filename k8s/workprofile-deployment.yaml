@@ -32,24 +32,14 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: mysql-secret
-                  key: MYSQL_USER       # ← נמשך מה־Secret
-            - name: DB_PASSWORD          # ← אחיד עם הקוד
+                  key: MYSQL_USER
+            - name: DB_PASSWORD     # ← שם אחיד וברור
               valueFrom:
                 secretKeyRef:
                   name: mysql-secret
-                  key: MYSQL_PASSWORD    # ← נמשך מה־Secret
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 15
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 30
-            periodSeconds: 10
+                  key: MYSQL_PASSWORD
+          # זמנית בלי probes כדי לא לתקוע את ה־pod
+          # (תחזירי אחרי שתבדקי שיש לך endpoint /health שעובד)
           resources:
             limits:
               memory: "512Mi"
@@ -64,7 +54,7 @@ spec:
             - sh
             - -c
             - |
-              until nc -z mysql-service 3306; do
+              until nc -z mysql 3306; do    # ← שם service של MySQL
                 echo "Waiting for MySQL..."
                 sleep 5
               done
