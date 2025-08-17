@@ -8,6 +8,6 @@ spec:
     app: workprofile
   ports:
     - protocol: TCP
-      port: 5000        # פורט פנימי בשירות
-      targetPort: 5000  # הפורט באפליקציה (בפוד)
-      nodePort: 30080   # פורט חיצוני קבוע לגישה מה-Node
+      port: 5000
+      targetPort: 5000
+      nodePort: 30080
