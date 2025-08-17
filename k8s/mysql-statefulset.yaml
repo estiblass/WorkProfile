@@ -49,7 +49,7 @@ spec:
                 - ping
                 - "-h"
                 - localhost
-            initialDelaySeconds: 10
+            initialDelaySeconds: 20   # ↑ יותר זמן להתחלה
             periodSeconds: 10
           resources:
             limits:
