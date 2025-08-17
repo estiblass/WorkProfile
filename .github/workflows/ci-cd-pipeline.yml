@@ -129,15 +129,19 @@ jobs:
           kubectl apply -f k8s/mysql-statefulset.yaml
           kubectl apply -f k8s/mysql-service.yaml
 
-      - name: Wait for MySQL Pod to be Ready
+      - name: Wait for MySQL Pod and DB to be Ready
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
         run: |
-          echo "Waiting for MySQL pod to be ready..."
-          until kubectl get pod mysql-0 -o jsonpath='{.status.containerStatuses[0].ready}' | grep true; do
+          echo "Waiting for MySQL pod to be running..."
+          kubectl wait --for=condition=Ready pod/mysql-0 --timeout=300s
+
+          echo "Waiting for MySQL to accept connections..."
+          until kubectl exec mysql-0 -- mysqladmin ping -h localhost -uroot -p$MYSQL_ROOT_PASSWORD --silent; do
             echo "MySQL not ready yet..."
             sleep 5
           done
-          echo "MySQL is ready!"
-          kubectl logs mysql-0
+          echo "✓ MySQL is ready and accepting connections"
 
       - name: Deploy WorkProfile manifests
         run: |
