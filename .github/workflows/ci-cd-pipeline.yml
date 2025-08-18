@@ -101,7 +101,7 @@ jobs:
           docker push esti563/workprofile:${{ env.IMAGE_TAG }}
           docker push esti563/workprofile:latest
 
-  # Stage 5: Kubernetes Deployment Testing
+  # Stage 5: Kubernetes Deployment Testing (פעיל עם pull מה-Docker Hub)
   kubernetes-test:
     needs: publish
     runs-on: ubuntu-latest
@@ -152,54 +152,19 @@ jobs:
     needs: publish
     runs-on: ubuntu-latest
     steps:
-      - name: Display manual deployment instructions (log)
+      - name: Display manual deployment instructions
         run: |
-          cat <<'EOM'
-          ============================
-          Manual Kubernetes Deployment
-          ============================
-
-          Deploy the manifests to your Killercoda environment with:
-            kubectl apply -f k8s/mysql-secret.yaml
-            kubectl apply -f k8s/mysql-statefulset.yaml
-            kubectl apply -f k8s/mysql-service.yaml
-            kubectl apply -f k8s/workprofile-configmap.yaml
-            kubectl apply -f k8s/workprofile-deployment.yaml
-            kubectl apply -f k8s/workprofile-service.yaml
-
-          Wait for pods to be ready and verify deployment with:
-            kubectl get pods
-            kubectl get statefulset
-            kubectl get pvc
-
-          Access the application using:
-            kubectl port-forward deployment/workprofile 5000:5000
-            # or expose via NodePort / LoadBalancer
-          EOM
-
-      - name: Add instructions to GitHub Summary
-        run: |
-          echo "## Manual Kubernetes Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Deploy the manifests:" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/mysql-secret.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/mysql-statefulset.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/mysql-service.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/workprofile-configmap.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/workprofile-deployment.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/workprofile-service.yaml" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Verify resources:" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "kubectl get pods" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl get statefulset" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl get pvc" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Access the application:" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "kubectl port-forward deployment/workprofile 5000:5000" >> $GITHUB_STEP_SUMMARY
-          echo "# or expose via NodePort / LoadBalancer" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "Deploy the manifests to your Killercoda environment with:"
+          echo "kubectl apply -f k8s/mysql-secret.yaml"
+          echo "kubectl apply -f k8s/mysql-statefulset.yaml"
+          echo "kubectl apply -f k8s/mysql-service.yaml"
+          echo "kubectl apply -f k8s/workprofile-configmap.yaml"
+          echo "kubectl apply -f k8s/workprofile-deployment.yaml"
+          echo "kubectl apply -f k8s/workprofile-service.yaml"
+          echo ""
+          echo "Wait for pods to be ready and verify deployment with:"
+          echo "kubectl get pods"
+          echo "kubectl get statefulset"
+          echo "kubectl get pvc"
+          echo ""
+          echo "Use kubectl port-forward or NodePort to access the application."
