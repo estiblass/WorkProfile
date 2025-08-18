@@ -101,8 +101,9 @@ jobs:
           docker push esti563/workprofile:${{ env.IMAGE_TAG }}
           docker push esti563/workprofile:latest
 
-  # Stage 5: Kubernetes Deployment Testing (פעיל עם pull מה-Docker Hub)
+  # Stage 5: Kubernetes Deployment Testing (מושבת ב-GitHub Actions)
   kubernetes-test:
+    if: false  # השלב הזה לא ירוץ אוטומטית
     needs: publish
     runs-on: ubuntu-latest
     env:
@@ -112,15 +113,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup kind cluster
-        uses: helm/kind-action@v1.8.0
-        with:
-          version: v0.20.0
-          cluster_name: kind
-          wait: 300s
+        uses: engineerd/setup-kind@v0.5.0
 
-      - name: Pull image from Docker Hub and load into kind
+      - name: Load Docker image into kind
         run: |
-          docker pull esti563/workprofile:${{ env.IMAGE_TAG }}
           kind load docker-image esti563/workprofile:${{ env.IMAGE_TAG }}
 
       - name: Deploy MySQL manifests
