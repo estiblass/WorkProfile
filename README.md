@@ -1,39 +1,142 @@
-## Overview
-This application was created by develeap for learning purposes in practicing different tools and technolegies. 
+WorkProfile – CI/CD Level 2
 
-# WorkProfile Application Project
-WorkProfile is a basic program that lists people's work information.
+WorkProfile is an advanced project demonstrating a CI/CD pipeline for a professional profile management application with MySQL integration. It uses Docker Compose for local testing and Kubernetes with StatefulSets for production deployment.
 
-# Database
-This application depends on a MySQL database in order to unlock full functionality.
-It can be deployed standalone or with a database. If deployed without a database, it will provide a read-only version with an example database and no ability to modify its contents. If a database is properly attached, it will allow the user to add and delete entries.
+🎯 Project Goals
 
-## Requirements
+Multi-tier architecture: frontend → backend → database
 
-In order to run this application, you need Python 3.10 installed. Depending on your environment, you may also need to install certain packages to your OS:
+MySQL integration with data persistence
 
-* `pkg-config`
-* `libmysqlclient-dev`
-* `python3.10-dev`
-* `build-essential`
+Docker Compose for local development and E2E testing
 
-# Python Virtual Environment
-It's a best practice to run Python applications in a venv. Make sure you have python3.10-venv installed. If not, you can install it with the following command: `sudo apt install python3.10-venv`.
-For more information about venv go to https://docs.python.org/3/library/venv.html#module-venv.
+Kubernetes deployment with StatefulSets for database reliability
+
+CI/CD pipeline with GitHub Actions using simplified curl-based tests
+
+Secure management of Secrets, ConfigMaps, and environment variables
+
+🛠️ Technologies
+
+Python 3.8+ – application development
+
+Flask – backend framework
+
+MySQL 8 – database
+
+Docker & Docker Compose – local 3-tier environment
+
+Kubernetes & StatefulSets – production-ready deployment
+
+GitHub Actions – CI/CD automation
+
+Nginx – reverse proxy and load balancer (local port 8080)
+
+📁 Repository Structure
+workprofile-advanced/
+├── .github/
+│   └── workflows/
+│       └── ci-cd-pipeline.yml
+├── k8s/
+│   ├── mysql-secret.yaml
+│   ├── mysql-statefulset.yaml
+│   ├── mysql-service.yaml
+│   ├── workprofile-configmap.yaml
+│   ├── workprofile-deployment.yaml
+│   └── workprofile-service.yaml
+├── docker-compose/
+│   ├── docker-compose.yml
+│   └── nginx.conf
+├── src/
+│   └── [application code]
+├── Dockerfile
+├── requirements.txt
+└── README.md
+
+🚀 Installation & Running Locally
+Requirements
+
+Python 3.8+
+
+Docker + Docker Compose
+
+Kubernetes (Killercoda or kind)
+
+GitHub repository with full application code
+
+Docker Hub or GHCR account
+
+Run Locally
+
+Clone the repository:
+
+git clone https://github.com/estiblass/WorkProfile.git
+cd WorkProfile
 
 
-## Instructions
-1) Create a venv: `python3.10 -m venv venv`
-2) Activate it: `source venv/bin/activate`
-3) Install the requirements: `pip install -r requirements.txt`
-4) run the application: `gunicorn --workers 4 --bind 0.0.0.0:8080 --access-logfile - --error-logfile - app:app`
+Start the 3-tier stack:
 
-## Environment Variables
+cd docker-compose
+docker-compose up -d
 
-The following environment variables are required when deploying the application with a database:
 
-- `DB_HOST`: The database connection string path.
-- `BACKEND`: The URI to this application (<http://localhost> if deployed locally, a DNS/IP otherwise).
-- `DB_USER`: The database user. Must match the user in the SQL dump and `MYSQL_USER`.
-- `DB_PASS`: The user password. Must match `MYSQL_PASSWORD`.
-- `DB_NAME`: The database name. Must match `MYSQL_DATABASE` as well as the database name in the SQL dump.
+Access the app:
+
+http://localhost:8080
+
+
+Health check:
+
+curl http://localhost:8080/health
+# Expected: "Database: Healthy"
+
+
+Stop and clean up:
+
+docker-compose down -v
+
+☑️ CI/CD Pipeline (GitHub Actions)
+
+The pipeline includes 6 stages:
+
+Basic Validation – Check required files and Python imports (Flask, MySQL connector).
+
+Build & Test Application – Build Docker image and run single-container curl tests.
+
+3-Tier Stack Testing – Docker Compose stack testing, Nginx reverse proxy, database connectivity.
+
+Publish – Push Docker image to registry with semantic versioning.
+
+Kubernetes Deployment Testing – Deploy MySQL StatefulSet and WorkProfile Deployment; test health, persistence, and CRUD.
+
+Manual Deployment – Detailed instructions for Killercoda deployment and verification.
+
+🔧 Kubernetes Manifests
+
+MySQL Secret – Database credentials
+
+MySQL StatefulSet – Persistent storage, health checks, resource limits
+
+MySQL Services – Headless + ClusterIP
+
+WorkProfile ConfigMap – Non-sensitive config
+
+WorkProfile Deployment – InitContainers wait for DB readiness
+
+WorkProfile Service – NodePort for external access
+
+✅ Testing
+
+Endpoint tests: / and /health
+
+Database connectivity and CRUD
+
+Data persistence after pod restarts
+
+StatefulSet, PVCs, and resource limits verification
+
+Simplified curl-based tests for all pipeline stages
+
+📊 CI/CD Workflow Diagram
+[Basic Validation] → [Build & Test Container] → [3-Tier Docker Compose] 
+→ [Publish Image] → [Kubernetes Deployment] → [Manual Killercoda Deployment]
